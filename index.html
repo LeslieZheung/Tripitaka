@@ -232,6 +232,37 @@
   .setup .status, .setup p { color: var(--muted-2); font-size: 13px; margin: 8px 0 0; }
   .loading { text-align: center; color: var(--muted-2); padding: 40px 0; font-family: var(--serif); letter-spacing: .1em; }
 
+  /* ---------- 讀經面板（CBETA XML 即時載入） */
+  .rp { margin-top: 22px; }
+  .rp:hover { transform: none; }
+  .rp-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  .rp-head h3 { margin: 0; }
+  .rp-tools { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 13.5px; color: var(--muted); font-family: var(--sans); }
+  .rp-tools select { font: inherit; font-size: 13.5px; padding: 6px 30px 6px 12px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--ink); appearance: none; cursor: pointer;
+                     background: var(--card) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a6d16' stroke-width='2.5'><path d='m6 9 6 6 6-6'/></svg>") no-repeat right 11px center; }
+  .rp-tools label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+  .rp-tools input[type=checkbox] { accent-color: var(--primary); }
+  .rp-status { font-size: 13px; color: var(--muted-2); font-family: var(--sans); margin-left: 12px; }
+  .rp-note { font-size: 13.5px; color: var(--muted); font-family: var(--sans); background: var(--chip); border-radius: 10px; padding: 8px 12px; margin: 8px 0 12px; }
+  .scripture { font-family: var(--serif); font-size: 17px; line-height: 2.1; letter-spacing: .02em; margin-top: 12px; }
+  .scripture p, .scripture div.lg { margin: 0 0 1em; text-align: justify; }
+  .scripture .jhead, .scripture .head { font-weight: 700; font-size: 20px; text-align: center; margin: 1.2em 0 .8em; }
+  .scripture .byline { color: var(--muted); text-align: right; font-size: 15px; }
+  .scripture .docnum { color: var(--muted-2); font-size: 13px; font-family: var(--sans); text-align: right; }
+  .scripture div.lg { padding-left: 2em; }
+  .scripture .lb { display: none; }
+  .scripture.show-lb .lb { display: inline-block; font-family: var(--sans); font-size: 10.5px; color: var(--muted-2); vertical-align: super; margin: 0 4px 0 2px; user-select: none; letter-spacing: 0; }
+  .scripture.show-lb .lb::before { content: attr(data-lb); }
+  .scripture .fn { display: none; color: var(--primary); font-size: 11px; margin-left: 2px; font-family: var(--sans); }
+  .scripture.show-notes .fn { display: inline; }
+  .scripture .inl { color: var(--muted); font-size: 14px; }
+  .scripture .g { color: var(--primary); }
+  .scripture .notes { display: none; margin: 18px 0 0; padding: 12px 0 0 1.6em; border-top: 1px dashed var(--line-2); font-family: var(--sans); font-size: 13.5px; color: var(--muted); line-height: 1.8; }
+  .scripture.show-notes .notes { display: block; }
+  .scripture .notes li { margin-bottom: 4px; }
+  .rp-nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 16px; }
+  @media (max-width: 640px) { .scripture { font-size: 16.5px; line-height: 2; } .rp-status { margin-left: 0; display: block; margin-top: 6px; } }
+
   /* ---------- 手機版底部操作列（單經頁） */
   .mobilebar { display: none; }
   @media (max-width: 640px) {
@@ -682,6 +713,25 @@ function detailHtml(x) {
       <div class="meta">${x.creator ? esc(x.creator) : ''}${x.juan ? ' · ' + esc(x.juan) + ' 卷' : ''}${x.category ? ' · ' + esc(x.category) : ''}</div>
       這部經尚無導讀。<br>可在試算表「目錄」的 J 欄「我的註釋」自行補上。
     </div>`}
+    <div class="paper rp" id="rp">
+      <div class="rp-head">
+        <h3>經文</h3>
+        <div class="rp-tools" id="rpTools" hidden>
+          <select id="juanSel" aria-label="卷"></select>
+          <label><input type="checkbox" id="lbToggle" checked> 行號</label>
+          <label><input type="checkbox" id="notesToggle"> 校勘註</label>
+        </div>
+      </div>
+      <div id="rpBody">
+        <button class="pill primary sm" id="loadText">展開經文</button>
+        <span class="rp-status" id="rpStatus">從 CBETA 官方 XML 即時載入，第一次約數秒；大部經典（如大般若經）需半分鐘左右。</span>
+      </div>
+      <div class="scripture show-lb" id="scripture" hidden></div>
+      <div class="rp-nav" id="rpNav" hidden>
+        <button class="pill sm" id="prevJuan">← 上一卷</button>
+        <button class="pill sm" id="nextJuan">下一卷 →</button>
+      </div>
+    </div>
     <div class="actions">
       <a class="pill primary sm" href="${esc(cbeta)}" target="_blank" rel="noopener">在 CBETA 讀經文</a>
     </div>
@@ -704,7 +754,7 @@ function mobilebarHtml(x) {
 function showDetail(work) {
   const x = BY_WORK[String(work)];
   if (!x) { $('reader').innerHTML = `<a class="back" href="#cats">← 依據部類</a><div class="paper empty">找不到經號 ${esc(work)}。</div>`; $('mobilebar').innerHTML = ''; }
-  else { current = x; $('reader').innerHTML = detailHtml(x); $('mobilebar').innerHTML = mobilebarHtml(x); document.title = `${x.work} ${x.title} · 大藏經對照`; }
+  else { current = x; $('reader').innerHTML = detailHtml(x); $('mobilebar').innerHTML = mobilebarHtml(x); document.title = `${x.work} ${x.title} · 大藏經對照`; initReader(x); }
   $('viewList').hidden = true; $('viewFolder').hidden = true; $('viewDetail').hidden = false; document.body.classList.add('inner'); window.scrollTo(0, 0);
 }
 function showHome() {
@@ -727,6 +777,148 @@ function resetHome() {
   showHome();
   if (location.hash) history.replaceState(null, '', location.pathname + location.search);
   window.scrollTo(0, 0);
+}
+
+// ---------- 讀經：從 CBETA 官方 XML（GitHub raw，可跨域）即時載入並在瀏覽器解析
+const XML_BASE = 'https://raw.githubusercontent.com/cbeta-org/xml-p5/master/';
+let VOLS = null;            // { files: {經號:[XML路徑...]}, alt: {異本經號: 正本經號} }
+const XML_CACHE = {};       // 路徑 -> { doc, charMap, juans, ed }
+let RS = null;              // 目前讀經狀態
+
+async function loadVols() {
+  if (VOLS) return VOLS;
+  const r = await fetch('vols.json', { cache: 'force-cache' });
+  if (!r.ok) throw new Error('vols.json HTTP ' + r.status);
+  VOLS = await r.json(); return VOLS;
+}
+function codePointOf(u) { const m = /U\+([0-9A-Fa-f]+)/.exec(u || ''); return m ? String.fromCodePoint(parseInt(m[1], 16)) : ''; }
+async function fetchXml(path, status) {
+  if (XML_CACHE[path]) return XML_CACHE[path];
+  const url = XML_BASE + path; let text = null;
+  try { const c = await caches.open('cbeta-xml-v1'); const hit = await c.match(url); if (hit) text = await hit.text(); } catch (e) {}
+  if (text == null) {
+    status('下載 ' + path.split('/').pop() + '…');
+    const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status + '：' + path);
+    text = await r.text();
+    try { const c = await caches.open('cbeta-xml-v1'); await c.put(url, new Response(text, { headers: { 'Content-Type': 'application/xml; charset=utf-8' } })); } catch (e) {}
+  }
+  status('解析中…');
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) throw new Error('XML 解析失敗');
+  // 缺字表：優先 unicode，其次 normal_unicode，最後用組字式
+  const charMap = {};
+  for (const ch of doc.getElementsByTagName('char')) {
+    const id = ch.getAttribute('xml:id') || ch.getAttributeNS('http://www.w3.org/XML/1998/namespace', 'id'); if (!id) continue;
+    let uni = '', norm = '', comp = '';
+    for (const m of ch.getElementsByTagName('mapping')) { const t = m.getAttribute('type'); if (t === 'unicode') uni = codePointOf(m.textContent); else if (t === 'normal_unicode') norm = codePointOf(m.textContent); }
+    for (const p of ch.getElementsByTagName('charProp')) { const ln = p.getElementsByTagName('localName')[0], v = p.getElementsByTagName('value')[0]; if (ln && v && ln.textContent.trim() === 'composition') comp = v.textContent.trim(); }
+    charMap[id] = uni || norm || comp || '▢';
+  }
+  const juans = [...doc.getElementsByTagName('milestone')].filter(m => m.getAttribute('unit') === 'juan').map(m => Number(m.getAttribute('n'))).filter(n => !isNaN(n));
+  const ed = (path.match(/^[A-Za-z]+/) || ['T'])[0];
+  // 新版 CBETA XML 把校勘註放在 <back>，正文只留 <anchor xml:id="nkr_note_…">；這裡建 錨點 id -> note 的對照
+  const noteByTarget = {};
+  for (const nt of doc.getElementsByTagName('note')) { const tg = nt.getAttribute('target'); if (tg) tg.split(/\s+/).forEach(t => { noteByTarget[t.replace(/^#/, '')] = nt; }); }
+  return (XML_CACHE[path] = { doc, charMap, juans, ed, path, noteByTarget });
+}
+
+function renderJuan(x, juanNo) {
+  const parts = []; const notes = []; let para = null; let cur = 0;
+  const open = cls => { para = { cls, html: '' }; parts.push(para); };
+  const add = h => { if (!para) open('p'); para.html += h; };
+  const clean = s => s.replace(/[\r\n]+[ \t]*/g, '');
+  const gch = el => x.charMap[(el.getAttribute('ref') || '').replace(/^#/, '')] || '▢';
+  const textOf = n => { let s = ''; for (const c of n.childNodes) { if (c.nodeType === 3) s += c.nodeValue; else if (c.nodeType === 1) { const t = c.localName; if (t === 'g') s += gch(c); else if (t === 'rdg' || t === 'note' || t === 'mulu') continue; else s += textOf(c); } } return clean(s); };
+  const BLOCK = { p: 'p', byline: 'byline', jhead: 'jhead', head: 'head', docNumber: 'docnum', lg: 'lg', item: 'p', row: 'p' };
+  function walk(n) {
+    if (n.nodeType === 3) { if (cur === juanNo) { const s = clean(n.nodeValue); if (s) add(esc(s)); } return; }
+    if (n.nodeType !== 1) return;
+    const t = n.localName;
+    if (t === 'milestone') { if (n.getAttribute('unit') === 'juan') { cur = Number(n.getAttribute('n')); para = null; } return; }
+    if (cur !== juanNo) { for (const c of n.childNodes) walk(c); return; }
+    switch (t) {
+      case 'lb': { const ed = n.getAttribute('ed'); if (ed && ed !== x.ed) return; add(`<span class="lb" data-lb="${esc(n.getAttribute('n') || '')}"></span>`); return; }
+      case 'anchor': {
+        const id = n.getAttribute('xml:id') || n.getAttributeNS('http://www.w3.org/XML/1998/namespace', 'id');
+        const nt = id && x.noteByTarget[id]; if (!nt) return;
+        const type = nt.getAttribute('type') || ''; if (type === 'rest' || type.startsWith('cf')) return;
+        const body = textOf(nt); if (!body) return;
+        notes.push({ type, text: body }); add(`<sup class="fn">${notes.length}</sup>`); return;
+      }
+      case 'pb': case 'space': case 'mulu': case 'rdg': case 'figDesc': case 'graphic': case 'figure': return;
+      case 'note': {
+        const type = n.getAttribute('type') || '', place = n.getAttribute('place') || '';
+        if (place.startsWith('inline')) { add(`<span class="inl">（${esc(textOf(n))}）</span>`); return; }
+        if (type === 'rest' || type.startsWith('cf')) return;
+        const body = textOf(n); if (!body) return;
+        notes.push({ type, text: body }); add(`<sup class="fn">${notes.length}</sup>`); return;
+      }
+      case 'g': add(`<span class="g">${esc(gch(n))}</span>`); return;
+      case 'l': { for (const c of n.childNodes) walk(c); add('<br>'); return; }
+      case 'app': { const lem = [...n.childNodes].find(c => c.localName === 'lem'); for (const c of (lem || n).childNodes) walk(c); return; }
+    }
+    if (BLOCK[t]) { open(BLOCK[t]); for (const c of n.childNodes) walk(c); para = null; return; }
+    for (const c of n.childNodes) walk(c);
+  }
+  walk(x.doc.getElementsByTagName('body')[0] || x.doc.documentElement);
+  const isEmpty = h => !h.replace(/<span class="lb"[^>]*><\/span>|<br>/g, '').trim();
+  let html = parts.filter(p => !isEmpty(p.html)).map(p => p.cls === 'lg' ? `<div class="lg">${p.html}</div>` : `<p class="${p.cls}">${p.html}</p>`).join('');
+  if (notes.length) html += '<ol class="notes">' + notes.map(o => `<li>${o.type === 'mod' ? '<b>CBETA</b> ' : (o.type === 'orig' ? '<b>大正</b> ' : '')}${esc(o.text)}</li>`).join('') + '</ol>';
+  return html || '<p class="empty">此卷沒有可顯示的內文。</p>';
+}
+
+function initReader(x) {
+  RS = { work: String(x.work), files: [], fileIdx: 0, known: [], juan: null, altOf: null };
+  const st = msg => { $('rpStatus').textContent = msg; };
+  $('loadText').addEventListener('click', async () => {
+    $('loadText').disabled = true;
+    try {
+      const v = await loadVols();
+      let key = RS.work; let files = v.files[key];
+      if (!files && v.alt && v.alt[key]) { RS.altOf = v.alt[key]; key = RS.altOf; files = v.files[key]; }
+      if (!files || !files.length) { st('CBETA XML 中找不到此經的檔案。'); return; }
+      RS.files = files;
+      if (RS.altOf) $('rpBody').insertAdjacentHTML('afterend', `<div class="rp-note">CBETA 未重複收錄此經，以下顯示對應正本 <a href="#${esc(RS.altOf)}">${esc(RS.altOf)}</a> 的經文。</div>`);
+      await openFile(0, st);
+      const first = RS.known[0]; if (first) await showJuan(first.juan, st);
+      $('rpBody').hidden = true; $('rpTools').hidden = false; $('rpNav').hidden = false; $('scripture').hidden = false;
+    } catch (e) { st('載入失敗：' + e.message); $('loadText').disabled = false; }
+  });
+  $('juanSel').addEventListener('change', async () => {
+    const val = $('juanSel').value;
+    if (val.startsWith('file:')) { await openFile(Number(val.slice(5)), st); const f = RS.files[Number(val.slice(5))]; const j = RS.known.find(k => k.path === f); if (j) await showJuan(j.juan, st); }
+    else await showJuan(Number(val), st);
+  });
+  $('prevJuan').addEventListener('click', () => stepJuan(-1, st));
+  $('nextJuan').addEventListener('click', () => stepJuan(1, st));
+  $('lbToggle').addEventListener('change', e => $('scripture').classList.toggle('show-lb', e.target.checked));
+  $('notesToggle').addEventListener('change', e => $('scripture').classList.toggle('show-notes', e.target.checked));
+}
+async function openFile(idx, st) {
+  const path = RS.files[idx]; const x = await fetchXml(path, st);
+  RS.fileIdx = idx;
+  x.juans.forEach(j => { if (!RS.known.some(k => k.juan === j)) RS.known.push({ juan: j, path }); });
+  RS.known.sort((a, b) => a.juan - b.juan);
+  const sel = $('juanSel');
+  sel.innerHTML = RS.known.map(k => `<option value="${k.juan}">第 ${k.juan} 卷</option>`).join('') +
+    RS.files.map((f, i) => RS.known.some(k => k.path === f) ? '' : `<option value="file:${i}">載入第 ${i + 1} 冊（${esc(f.split('/').pop().replace('.xml', ''))}）…</option>`).join('');
+  st('');
+}
+async function showJuan(j, st) {
+  const k = RS.known.find(o => o.juan === j); if (!k) return;
+  const x = await fetchXml(k.path, st);
+  RS.juan = j; $('juanSel').value = String(j);
+  $('scripture').innerHTML = renderJuan(x, j);
+  st(`第 ${j} 卷 · 共 ${RS.known.length}${RS.files.length > 1 && RS.known.length < 600 ? '+' : ''} 卷 · 來源 ${k.path.split('/').pop()}`);
+  const pos = RS.known.findIndex(o => o.juan === j);
+  $('prevJuan').disabled = pos <= 0;
+  $('nextJuan').disabled = pos >= RS.known.length - 1 && !RS.files.some(f => !RS.known.some(o => o.path === f));
+  $('rp').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+async function stepJuan(dir, st) {
+  const pos = RS.known.findIndex(o => o.juan === RS.juan); let next = RS.known[pos + dir];
+  if (!next && dir > 0) { const idx = RS.files.findIndex(f => !RS.known.some(o => o.path === f)); if (idx >= 0) { await openFile(idx, st); next = RS.known.find(o => o.juan > RS.juan); } }
+  if (next) await showJuan(next.juan, st);
 }
 
 // ---------- 事件

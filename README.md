@@ -41,6 +41,7 @@ index.html（GitHub Pages）── fetch JSON ── 搜尋 / 卡片 / 單經導
 - `index.html`：整個前端，單一檔案，無建置步驤。頂端 `SHEET_ID` 指向試算表；`data.json` 為備援。
 - `data.json`：試算表「目錄」的靜態快照，用 `build_data.ps1` 重新產生（在 Windows PowerShell 執行即可，不需登入）。
 - `hero.jpg`：首屏右側主視覺（敦煌壁畫）。
+- `vols.json`：經號 → CBETA XML 檔路徑（含異本 → 正本對照），用 `build_vols.ps1` 產生。單經頁「展開經文」即依此從 cbeta-org/xml-p5 抓原文。
 - `CHANGELOG.md`：版本編修歷史摘要；逐次提交見 [Commits](https://github.com/LeslieZheung/Tripitaka/commits/main)。
 - `catalog.json`：CBETA「依據部類」目錄樹（23 部類、900 子分類、5,332 部），由 [CBETA 官方部類目錄](https://github.com/heavenchou/cbwork-bin/blob/master/cbreader2X/bulei/bulei.txt) 轉出。
 - `Code.gs`：Apps Script 原始碼。若試算表不是綁定專案，會用 `SHEET_ID` 開啟。
