@@ -232,6 +232,38 @@
   .setup .status, .setup p { color: var(--muted-2); font-size: 13px; margin: 8px 0 0; }
   .loading { text-align: center; color: var(--muted-2); padding: 40px 0; font-family: var(--serif); letter-spacing: .1em; }
 
+  /* ---------- 手機版：搜尋欄置頂 + 部別膠囊橫向滑動 + 條列清單（仿 deerpark） */
+  .qb-home, .chips-strip, .mlist { display: none; }
+  .mlist-title { font-family: var(--serif); font-size: 22px; font-weight: 600; margin: 22px 0 12px; letter-spacing: .04em; }
+  .mlist-title small { font-family: var(--sans); color: var(--muted-2); font-size: 13px; margin-left: 8px; letter-spacing: 0; font-weight: normal; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px;
+         text-decoration: none; color: inherit; box-shadow: var(--shadow); transition: transform .18s ease, border-color .18s ease; }
+  .row:hover, .row:active { transform: translateY(-2px); border-color: color-mix(in srgb, var(--primary) 45%, transparent); }
+  .row .rid { flex: none; width: 58px; font-family: var(--sans); font-size: 12px; color: var(--muted-2); letter-spacing: .04em; }
+  .row .rbody { min-width: 0; flex: 1; }
+  .row .rt { font-family: var(--serif); font-size: 17px; font-weight: 600; line-height: 1.35; }
+  .row .rm { font-size: 12.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .rbook { flex: none; color: var(--primary); opacity: .85; }
+  .row .rbook.none { opacity: .22; }
+  @media (max-width: 800px) {
+    .qb-in { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px 6px; }
+    .qb-brand, .qb-in select { display: none !important; }
+    .qb-home { display: grid; place-items: center; flex: none; width: 42px; height: 42px; border-radius: 12px; background: var(--primary-soft); transition: transform .18s ease; }
+    .qb-home:hover { transform: translateY(-2px); }
+    .qb-home img { width: 26px; height: 26px; display: block; }
+    .qb-in .qb-search { flex: 1 1 0; min-width: 0; }
+    .chips-strip { display: flex; gap: 8px; width: 100%; overflow-x: auto; padding: 2px 0 6px; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+    .chips-strip::-webkit-scrollbar { display: none; }
+    .chip-cat { flex: none; scroll-snap-align: start; padding: 7px 12px; border-radius: 10px; background: var(--chip); color: var(--muted); font-size: 13.5px; white-space: nowrap; border: 1px solid transparent; cursor: pointer;
+                font-family: var(--sans); transition: background-color .18s ease, color .18s ease, transform .18s ease; }
+    .chip-cat small { opacity: .7; margin-left: 3px; font-size: 12px; }
+    .chip-cat.active { background: var(--primary); color: var(--on-primary); }
+    .chip-cat.active small { opacity: .85; }
+    #cats, #catgrid, .hint { display: none !important; }
+    .mlist { display: block; }
+    .mlist .more { padding: 12px; }
+  }
+
   /* ---------- 讀經面板（CBETA XML 即時載入） */
   .rp { margin-top: 22px; }
   .rp:hover { transform: none; }
@@ -335,6 +367,7 @@
 <div class="querybar" id="querybar">
   <div class="qb-in">
     <a class="qb-brand" id="qbBrand" href="#">大藏經對照</a>
+    <a class="qb-home" id="qbHome" href="#" aria-label="回首頁"><img id="qbHomeImg" alt="" width="26" height="26"></a>
     <select id="selCat" aria-label="部類"><option value="">部類</option></select>
     <select id="selSub" aria-label="子分類" disabled><option value="">子分類</option></select>
     <select id="selWork" aria-label="經典" disabled><option value="">經典</option></select>
@@ -342,6 +375,7 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       <input type="search" id="q" placeholder="搜尋經號、經名、譯者…" autocomplete="off">
     </div>
+    <div class="chips-strip" id="catChips" role="tablist" aria-label="部類"></div>
   </div>
 </div>
 
@@ -380,6 +414,13 @@
       </div>
       <div class="grid" id="grid"></div>
     </div>
+
+    <!-- 手機版：部別膠囊選定後的條列清單 -->
+    <section class="mlist" id="mlist">
+      <h2 class="mlist-title" id="mlistTitle">全部經典 <small id="mlistCount"></small></h2>
+      <div id="mlistBody"></div>
+      <div class="more" id="mlistMore"></div>
+    </section>
 
     <div class="section-title" id="cats">
       <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
@@ -573,7 +614,49 @@ function renderCats() {
   if (!CATALOG) return;
   $('catgrid').innerHTML = (CATALOG.items || []).filter(it => !it.w).map(catTileHtml).join('');
   fillSelect($('selCat'), '部類', (CATALOG.items || []).filter(it => !it.w).map(n => [n.n, n.label]));
+  renderChips();
 }
+
+// ---------- 手機版：部別膠囊 + 條列清單
+const isMobile = () => matchMedia('(max-width: 800px)').matches;
+const catShort = label => { const m = String(label).match(/^\d+\s+(\S+)/); return m ? m[1] : String(label); };
+let MLIST = [], mshown = 0, mChip = '';
+function rowHtml(x) {
+  const meta = [x.creator ? String(x.creator) : (x.dynasty || ''), x.juan ? `${x.juan} 卷` : ''].filter(Boolean).join(' · ');
+  return `<a class="row" href="#${esc(x.work)}" data-work="${esc(x.work)}">
+    <span class="rid">${esc(x.work)}</span>
+    <span class="rbody"><span class="rt">${esc(x.title)}</span>${meta ? `<div class="rm">${esc(meta)}</div>` : ''}</span>
+    <svg class="rbook ${hasIntro(x) ? '' : 'none'}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/></svg>
+  </a>`;
+}
+function renderChips() {
+  const cats = (CATALOG.items || []).filter(it => !it.w);
+  $('catChips').innerHTML = `<button class="chip-cat ${mChip === '' ? 'active' : ''}" data-n="">全部<small>${ALL.length}</small></button>` +
+    cats.map(n => `<button class="chip-cat ${mChip === n.n ? 'active' : ''}" data-n="${esc(n.n)}">${esc(catShort(n.label))}<small>${n.count || 0}</small></button>`).join('');
+  selectChip(mChip, false);
+}
+function selectChip(n, userTap) {
+  mChip = n;
+  [...$('catChips').children].forEach(b => b.classList.toggle('active', b.dataset.n === n));
+  if (n && NODES[n]) {
+    MLIST = worksUnder(NODES[n]).map(it => BY_WORK[it.w] || { work: it.w, title: it.l, canon: (it.w.match(/^[A-Za-z]+/) || [''])[0] });
+    $('mlistTitle').innerHTML = `${esc(catShort(NODES[n].label))} <small id="mlistCount">${MLIST.length} 部</small>`;
+  } else {
+    MLIST = ALL; $('mlistTitle').innerHTML = `全部經典 <small id="mlistCount">${ALL.length} 部</small>`;
+  }
+  mshown = 0; $('mlistBody').innerHTML = ''; renderMList();
+  if (userTap) {
+    const active = $('catChips').querySelector('.chip-cat.active'); if (active) active.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    scrollToCats(true);
+  }
+}
+function renderMList() {
+  const end = Math.min(MLIST.length, mshown + 80);
+  $('mlistBody').insertAdjacentHTML('beforeend', MLIST.slice(mshown, end).map(rowHtml).join(''));
+  mshown = end;
+  $('mlistMore').textContent = mshown < MLIST.length ? `顯示 ${mshown} / ${MLIST.length}，往下捲動載入更多` : (MLIST.length ? `共 ${MLIST.length} 部` : '沒有經典');
+}
+$('catChips').addEventListener('click', e => { const b = e.target.closest('.chip-cat'); if (b) selectChip(b.dataset.n, true); });
 
 // ---------- 上方下拉查詢：部類 → 子分類 → 經典
 function fillSelect(sel, placeholder, pairs) {
@@ -675,7 +758,7 @@ function cardHtml(x) {
 function renderMore() {
   const grid = $('grid'); const end = Math.min(VIEW.length, shown + PAGE_SIZE);
   const old = grid.querySelector('.more'); if (old) old.remove();
-  grid.insertAdjacentHTML('beforeend', VIEW.slice(shown, end).map(cardHtml).join(''));
+  grid.insertAdjacentHTML('beforeend', VIEW.slice(shown, end).map(isMobile() ? rowHtml : cardHtml).join(''));
   shown = end;
   grid.insertAdjacentHTML('beforeend', `<div class="more">${shown < VIEW.length ? `顯示 ${shown} / ${VIEW.length}，往下捲動載入更多` : (VIEW.length ? `共 ${VIEW.length} 部` : '沒有符合的經典')}</div>`);
 }
@@ -718,7 +801,7 @@ function detailHtml(x) {
         <h3>經文</h3>
         <div class="rp-tools" id="rpTools" hidden>
           <select id="juanSel" aria-label="卷"></select>
-          <label><input type="checkbox" id="lbToggle" checked> 行號</label>
+          <label><input type="checkbox" id="lbToggle"> 行號</label>
           <label><input type="checkbox" id="notesToggle"> 校勘註</label>
         </div>
       </div>
@@ -726,7 +809,7 @@ function detailHtml(x) {
         <button class="pill primary sm" id="loadText">展開經文</button>
         <span class="rp-status" id="rpStatus">從 CBETA 官方 XML 即時載入，第一次約數秒；大部經典（如大般若經）需半分鐘左右。</span>
       </div>
-      <div class="scripture show-lb" id="scripture" hidden></div>
+      <div class="scripture" id="scripture" hidden></div>
       <div class="rp-nav" id="rpNav" hidden>
         <button class="pill sm" id="prevJuan">← 上一卷</button>
         <button class="pill sm" id="nextJuan">下一卷 →</button>
@@ -773,6 +856,7 @@ function route() {
 function resetHome() {
   $('q').value = ''; applyFilter();
   $('selCat').value = ''; fillSelect($('selSub'), '子分類', []); $('selWork').innerHTML = '<option value="">經典</option>'; $('selWork').disabled = true; qbNode = '';
+  if (mChip) selectChip('', false);
   lastFolder = ''; origin = { type: 'home' };
   showHome();
   if (location.hash) history.replaceState(null, '', location.pathname + location.search);
@@ -926,7 +1010,7 @@ $('q').addEventListener('input', applyFilter);
 $('q').addEventListener('keydown', e => { if (e.key === 'Enter' && VIEW.length) location.hash = VIEW[0].work; });
 $('clearFilter').addEventListener('click', () => { $('q').value = ''; applyFilter(); });
 document.addEventListener('click', e => {
-  const c = e.target.closest('.card'); if (!c) return;
+  const c = e.target.closest('.card, .row'); if (!c) return;
   e.preventDefault();
   // 記住從哪裡進來，單經頁的返回鍵才會回到正確的地方
   if (!$('viewFolder').hidden) origin = { type: 'folder', n: lastFolder };
@@ -943,9 +1027,14 @@ function setQbHeight() { document.documentElement.style.setProperty('--qb-h', $(
 setQbHeight(); window.addEventListener('resize', setQbHeight); window.addEventListener('load', setQbHeight);
 function scrollToCats(smooth) {
   setQbHeight();
-  const top = $('cats').getBoundingClientRect().top + window.scrollY - $('querybar').offsetHeight - 8;
+  const target = isMobile() ? $('mlistTitle') : $('cats');
+  const top = target.getBoundingClientRect().top + window.scrollY - $('querybar').offsetHeight - 8;
   window.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' });
 }
+// 手機版清單無限捲動
+window.addEventListener('scroll', () => { if (!isMobile() || $('viewList').hidden || $('q').value.trim()) return; if (window.innerHeight + window.scrollY > document.body.offsetHeight - 700 && mshown < MLIST.length) renderMList(); }, { passive: true });
+$('qbHomeImg').src = (document.querySelector('link[rel="icon"]') || {}).href || '';
+$('qbHome').addEventListener('click', e => { e.preventDefault(); resetHome(); });
 $('scrollHint').addEventListener('click', e => { e.preventDefault(); scrollToCats(true); });
 window.addEventListener('scroll', () => {
   $('totop').hidden = false;
