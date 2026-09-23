@@ -232,6 +232,34 @@
   .setup .status, .setup p { color: var(--muted-2); font-size: 13px; margin: 8px 0 0; }
   .loading { text-align: center; color: var(--muted-2); padding: 40px 0; font-family: var(--serif); letter-spacing: .1em; }
 
+  /* ---------- 桌機頂欄：三條線 + 搜尋欄；三條線對齊首屏圖片左緣（左欄 150px） */
+  .qb-in { grid-template-columns: none; display: flex; align-items: center; gap: 14px; padding: 10px 20px 10px 150px; max-width: none; margin: 0; }
+  .qb-in .qb-search { flex: 0 1 520px; min-width: 0; }
+  .menu-btn { flex: none; width: 44px; height: 44px; border-radius: 12px; border: 1px solid transparent; background: transparent; cursor: pointer; display: grid; place-content: center; gap: 5px;
+              transition: background-color .25s ease, border-color .25s ease, transform .18s ease; }
+  .menu-btn span { display: block; width: 22px; height: 2px; background: var(--ink); border-radius: 2px; transition: transform .35s cubic-bezier(.4,0,.2,1), opacity .25s ease, width .3s ease; transform-origin: center; }
+  .menu-btn:hover { background: var(--primary-soft); border-color: var(--line); transform: translateY(-2px); }
+  .menu-btn[aria-expanded="true"] span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .menu-btn[aria-expanded="true"] span:nth-child(2) { opacity: 0; width: 0; }
+  .menu-btn[aria-expanded="true"] span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+  /* 部類選單：輕柔展開／收合 */
+  .cat-menu { position: absolute; left: 0; right: 0; top: 100%; z-index: 11; box-shadow: 0 18px 40px -20px rgba(31,29,26,.35);
+              max-height: 0; overflow: hidden; opacity: 0; transform: translateY(-6px); background: var(--card-2); border-top: 1px solid transparent; border-bottom: 1px solid var(--line);
+              transition: max-height .5s cubic-bezier(.4,0,.2,1), opacity .35s ease, transform .4s cubic-bezier(.4,0,.2,1), border-color .3s ease; }
+  .cat-menu.open { max-height: 640px; opacity: 1; transform: translateY(0); border-top-color: var(--line); }
+  .cat-menu-in { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; padding: 16px 20px 18px 150px; }
+  .menu-cat { display: flex; align-items: baseline; gap: 8px; min-width: 0; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); cursor: pointer; text-align: left; color: var(--ink);
+              font: inherit; font-family: var(--serif); font-size: 16px; font-weight: 600; letter-spacing: .04em;
+              background: linear-gradient(90deg, #ffffff 0%, #ffffff 50%, var(--chip) 50%, var(--chip) 100%); background-size: 200% 100%; background-position: 100% 0;
+              transition: background-position .5s cubic-bezier(.4,0,.2,1), color .35s ease, border-color .35s ease, box-shadow .35s ease, transform .2s ease; }
+  .menu-cat .no { font-family: var(--sans); font-size: 12px; color: var(--primary); letter-spacing: .06em; flex: none; }
+  .menu-cat .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .menu-cat .ct { margin-left: auto; font-family: var(--sans); font-size: 12px; color: var(--muted-2); font-weight: normal; flex: none; }
+  .menu-cat:hover { background-position: 0 0; color: var(--primary); border-color: color-mix(in srgb, var(--primary) 40%, transparent); box-shadow: 0 6px 16px -10px rgba(138,109,22,.35); transform: translateY(-2px); }
+  .menu-cat.active { border-color: var(--primary); }
+  @media (max-width: 1100px) { .cat-menu-in { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @media (max-width: 800px) { .menu-btn, .cat-menu { display: none !important; } }
+
   /* ---------- 手機版：搜尋欄置頂 + 部別膠囊橫向滑動 + 條列清單（仿 deerpark） */
   .qb-home, .chips-strip, .mlist { display: none; }
   .mlist-title { font-family: var(--serif); font-size: 22px; font-weight: 600; margin: 22px 0 12px; letter-spacing: .04em; }
@@ -248,9 +276,10 @@
   @media (max-width: 800px) {
     .qb-in { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px 6px; }
     .qb-brand, .qb-in select { display: none !important; }
-    .qb-home { display: grid; place-items: center; flex: none; width: 42px; height: 42px; border-radius: 12px; background: var(--primary-soft); transition: transform .18s ease; }
+    /* 內頁（部類頁、單經頁）才顯示：書本圖示 = 回首頁 */
+    body.inner .qb-home { display: grid; place-items: center; flex: none; width: 42px; height: 42px; border-radius: 12px; background: var(--primary-soft); transition: transform .18s ease; }
     .qb-home:hover { transform: translateY(-2px); }
-    .qb-home img { width: 26px; height: 26px; display: block; }
+    .qb-home { color: var(--primary); }
     .qb-in .qb-search { flex: 1 1 0; min-width: 0; }
     .chips-strip { display: flex; gap: 8px; width: 100%; overflow-x: auto; padding: 2px 0 6px; scrollbar-width: none; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
     .chips-strip::-webkit-scrollbar { display: none; }
@@ -259,6 +288,11 @@
     .chip-cat small { opacity: .7; margin-left: 3px; font-size: 12px; }
     .chip-cat.active { background: var(--primary); color: var(--on-primary); }
     .chip-cat.active small { opacity: .85; }
+    /* 第二層：子分類膠囊（外框式），沒有內容時不佔空間 */
+    .chips-strip.sub { padding-top: 0; }
+    .chips-strip.sub:empty { display: none; }
+    .chips-strip.sub .chip-cat { background: var(--card); border-color: var(--line-2); color: var(--muted); font-size: 12.5px; padding: 5px 10px; border-radius: 999px; }
+    .chips-strip.sub .chip-cat.active { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
     #cats, #catgrid, .hint { display: none !important; }
     .mlist { display: block; }
     .mlist .more { padding: 12px; }
@@ -367,15 +401,19 @@
 <div class="querybar" id="querybar">
   <div class="qb-in">
     <a class="qb-brand" id="qbBrand" href="#">大藏經對照</a>
-    <a class="qb-home" id="qbHome" href="#" aria-label="回首頁"><img id="qbHomeImg" alt="" width="26" height="26"></a>
-    <select id="selCat" aria-label="部類"><option value="">部類</option></select>
-    <select id="selSub" aria-label="子分類" disabled><option value="">子分類</option></select>
-    <select id="selWork" aria-label="經典" disabled><option value="">經典</option></select>
+    <a class="qb-home" id="qbHome" href="#" aria-label="回首頁"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/></svg></a>
+    <button class="menu-btn" id="menuBtn" aria-label="部類選單" aria-expanded="false" aria-controls="catMenu">
+      <span></span><span></span><span></span>
+    </button>
     <div class="search-box qb-search">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       <input type="search" id="q" placeholder="搜尋經號、經名、譯者…" autocomplete="off">
     </div>
     <div class="chips-strip" id="catChips" role="tablist" aria-label="部類"></div>
+    <div class="chips-strip sub" id="subChips" role="tablist" aria-label="子分類"></div>
+  </div>
+  <div class="cat-menu" id="catMenu" aria-hidden="true">
+    <div class="cat-menu-in" id="catMenuIn"></div>
   </div>
 </div>
 
@@ -613,9 +651,24 @@ function catTileHtml(node) {
 function renderCats() {
   if (!CATALOG) return;
   $('catgrid').innerHTML = (CATALOG.items || []).filter(it => !it.w).map(catTileHtml).join('');
-  fillSelect($('selCat'), '部類', (CATALOG.items || []).filter(it => !it.w).map(n => [n.n, n.label]));
+  renderMenu();
   renderChips();
 }
+
+// ---------- 桌機：三條線部類選單
+function renderMenu() {
+  const cats = (CATALOG.items || []).filter(it => !it.w);
+  $('catMenuIn').innerHTML = cats.map(n => { const m = String(n.label).match(/^(\d+)\s+(\S+)/);
+    return `<button class="menu-cat ${lastFolder === n.n ? 'active' : ''}" data-n="${esc(n.n)}"><span class="no">${m ? esc(m[1]) : ''}</span><span class="nm">${esc(m ? m[2] : n.label)}</span><span class="ct">${n.count || 0}</span></button>`; }).join('');
+}
+function setMenu(open) {
+  $('catMenu').classList.toggle('open', open); $('catMenu').setAttribute('aria-hidden', String(!open));
+  $('menuBtn').setAttribute('aria-expanded', String(open));
+}
+$('menuBtn').addEventListener('click', () => setMenu(!$('catMenu').classList.contains('open')));
+$('catMenuIn').addEventListener('click', e => { const b = e.target.closest('.menu-cat'); if (!b) return; [...$('catMenuIn').children].forEach(x => x.classList.toggle('active', x === b)); setMenu(false); location.hash = 'n=' + b.dataset.n; });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('catMenu').classList.contains('open')) setMenu(false); });
+document.addEventListener('click', e => { if ($('catMenu').classList.contains('open') && !e.target.closest('.querybar')) setMenu(false); });
 
 // ---------- 手機版：部別膠囊 + 條列清單
 const isMobile = () => matchMedia('(max-width: 800px)').matches;
@@ -635,21 +688,55 @@ function renderChips() {
     cats.map(n => `<button class="chip-cat ${mChip === n.n ? 'active' : ''}" data-n="${esc(n.n)}">${esc(catShort(n.label))}<small>${n.count || 0}</small></button>`).join('');
   selectChip(mChip, false);
 }
+// 子分類標籤只留中文名：去掉 "T18-21, X01-02,23 … etc." 這類冊號碼
+const subShort = s => {
+  const keep = String(s).split(/\s+/).filter(t => /[㐀-鿿]/.test(t)).map(t => t.replace(/^[A-Za-z]{1,3}\d[\w,\-]*(?=[^\w])/, ''));
+  const out = keep.join(' ').replace(/\s*／\s*/g, '／').trim();
+  return out || String(s);
+};
+const toRecs = node => worksUnder(node).map(it => BY_WORK[it.w] || { work: it.w, title: it.l, canon: (it.w.match(/^[A-Za-z]+/) || [''])[0] });
+let mSub = '';
+// 在部類頁或單經頁點膠囊：先回到首頁，清單才看得到
+function ensureHomeForList() {
+  if (!$('viewList').hidden) return;
+  showHome();
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+}
 function selectChip(n, userTap) {
-  mChip = n;
+  if (userTap) ensureHomeForList();
+  mChip = n; mSub = '';
   [...$('catChips').children].forEach(b => b.classList.toggle('active', b.dataset.n === n));
   if (n && NODES[n]) {
-    MLIST = worksUnder(NODES[n]).map(it => BY_WORK[it.w] || { work: it.w, title: it.l, canon: (it.w.match(/^[A-Za-z]+/) || [''])[0] });
-    $('mlistTitle').innerHTML = `${esc(catShort(NODES[n].label))} <small id="mlistCount">${MLIST.length} 部</small>`;
+    const node = NODES[n]; const subs = (node.items || []).filter(it => !it.w);
+    // 第二層：子分類膠囊（全部 + 各子分類）
+    $('subChips').innerHTML = subs.length ? `<button class="chip-cat active" data-n="">全部<small>${node.count || 0}</small></button>` +
+      subs.filter(s => s.count > 0).map(s => `<button class="chip-cat" data-n="${esc(s.n)}">${esc(subShort(s.label))}<small>${s.count}</small></button>`).join('') : '';
+    MLIST = toRecs(node);
+    $('mlistTitle').innerHTML = `${esc(catShort(node.label))} <small id="mlistCount">${MLIST.length} 部</small>`;
   } else {
+    $('subChips').innerHTML = '';
     MLIST = ALL; $('mlistTitle').innerHTML = `全部經典 <small id="mlistCount">${ALL.length} 部</small>`;
   }
+  setQbHeight();
   mshown = 0; $('mlistBody').innerHTML = ''; renderMList();
   if (userTap) {
     const active = $('catChips').querySelector('.chip-cat.active'); if (active) active.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    $('subChips').scrollLeft = 0;
     scrollToCats(true);
   }
 }
+function selectSub(n) {
+  ensureHomeForList();
+  mSub = n;
+  [...$('subChips').children].forEach(b => b.classList.toggle('active', b.dataset.n === n));
+  const top = NODES[mChip]; const node = n ? NODES[n] : top; if (!node) return;
+  MLIST = toRecs(node);
+  $('mlistTitle').innerHTML = `${esc(catShort(top.label))}${n ? ' › ' + esc(subShort(node.label)) : ''} <small id="mlistCount">${MLIST.length} 部</small>`;
+  mshown = 0; $('mlistBody').innerHTML = ''; renderMList();
+  const active = $('subChips').querySelector('.chip-cat.active'); if (active) active.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  scrollToCats(true);
+}
+$('subChips').addEventListener('click', e => { const b = e.target.closest('.chip-cat'); if (b) selectSub(b.dataset.n); });
 function renderMList() {
   const end = Math.min(MLIST.length, mshown + 80);
   $('mlistBody').insertAdjacentHTML('beforeend', MLIST.slice(mshown, end).map(rowHtml).join(''));
@@ -669,28 +756,6 @@ function worksUnder(node, acc) {
   return acc;
 }
 function shortLabel(s) { return String(s).replace(/\s+etc\.?.*$/, '').replace(/\s+[A-Z]{1,3}\d[\w,\-]*$/, ''); }
-let qbNode = '';
-$('selCat').addEventListener('change', () => {
-  const n = $('selCat').value; qbNode = n;
-  $('selWork').innerHTML = '<option value="">經典</option>'; $('selWork').disabled = true;
-  if (!n) { fillSelect($('selSub'), '子分類', []); return; }
-  const node = NODES[n]; const subs = (node.items || []).filter(it => !it.w);
-  if (subs.length) { fillSelect($('selSub'), '子分類', subs.map(s => [s.n, shortLabel(s.label)])); }
-  else { fillSelect($('selSub'), '（無子分類）', []); fillWorks(node); }
-});
-$('selSub').addEventListener('change', () => {
-  const n = $('selSub').value; if (!n) { $('selWork').innerHTML = '<option value="">經典</option>'; $('selWork').disabled = true; return; }
-  qbNode = n; fillWorks(NODES[n]);
-});
-function fillWorks(node) {
-  const list = worksUnder(node).map(it => { const x = BY_WORK[it.w]; return [it.w, `${it.w} ${x ? x.title : it.l}`]; });
-  fillSelect($('selWork'), `經典（${list.length}）`, list);
-}
-$('selWork').addEventListener('change', () => {
-  const w = $('selWork').value; if (!w) return;
-  origin = { type: 'folder', n: qbNode }; lastFolder = qbNode;
-  location.hash = w;
-});
 
 // ---------- 子分類視圖
 function subTileHtml(node) {
@@ -846,7 +911,7 @@ function showHome() {
 function route() {
   const h = decodeURIComponent(location.hash.replace(/^#/, '')).trim();
   if (!ALL.length) return;
-  if (h.startsWith('n=')) { lastFolder = h.slice(2); showFolder(lastFolder); return; }
+  if (h.startsWith('n=')) { lastFolder = h.slice(2); showFolder(lastFolder); const top = lastFolder.split('.').slice(0, 2).join('.'); [...$('catMenuIn').children].forEach(x => x.classList.toggle('active', x.dataset.n === top)); return; }
   if (h && h !== 'cats' && h !== 'list' && h !== 'search') { showDetail(h); return; }
   showHome();
   if (h === 'cats') scrollToCats(true);
@@ -855,8 +920,8 @@ function route() {
 // 左上角回首頁：清掉搜尋、關掉展開的部類，回到最初狀態
 function resetHome() {
   $('q').value = ''; applyFilter();
-  $('selCat').value = ''; fillSelect($('selSub'), '子分類', []); $('selWork').innerHTML = '<option value="">經典</option>'; $('selWork').disabled = true; qbNode = '';
   if (mChip) selectChip('', false);
+  [...$('catMenuIn').children].forEach(x => x.classList.remove('active')); setMenu(false);
   lastFolder = ''; origin = { type: 'home' };
   showHome();
   if (location.hash) history.replaceState(null, '', location.pathname + location.search);
@@ -1033,7 +1098,6 @@ function scrollToCats(smooth) {
 }
 // 手機版清單無限捲動
 window.addEventListener('scroll', () => { if (!isMobile() || $('viewList').hidden || $('q').value.trim()) return; if (window.innerHeight + window.scrollY > document.body.offsetHeight - 700 && mshown < MLIST.length) renderMList(); }, { passive: true });
-$('qbHomeImg').src = (document.querySelector('link[rel="icon"]') || {}).href || '';
 $('qbHome').addEventListener('click', e => { e.preventDefault(); resetHome(); });
 $('scrollHint').addEventListener('click', e => { e.preventDefault(); scrollToCats(true); });
 window.addEventListener('scroll', () => {
