@@ -350,9 +350,12 @@
     .brand .name { font-size: 18px; }
     /* 手機：主視覺在上、標題橫排在下，避免直式文字擠壓 */
     .hero { grid-template-columns: 1fr; height: auto; min-height: 0; max-height: none; }
-    .hero-visual { order: 1; height: 56vw; min-height: 220px; max-height: 340px; }
-    .scroll-hint { width: 40px; height: 40px; bottom: 14px; }
-    .hero-visual::after { background: linear-gradient(0deg, rgba(255,255,255,.5) 0%, rgba(255,255,255,0) 30%); }
+    /* 手機：直式壁畫填滿整個畫面（扣掉頂端查詢列） */
+    .hero-visual { order: 1; height: calc(100vh - var(--qb-h, 120px)); min-height: 420px; max-height: none; }
+    @supports (height: 100svh) { .hero-visual { height: calc(100svh - var(--qb-h, 120px)); } }
+    .hero-visual img.mural { object-position: center 35%; }
+    .scroll-hint { width: 42px; height: 42px; bottom: 22px; }
+    .hero-visual::after { background: linear-gradient(0deg, rgba(255,255,255,.45) 0%, rgba(255,255,255,0) 22%); }
     .hero-side { order: 2; flex-direction: row; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 20px; border-right: 0; border-top: 1px solid var(--line); }
     .vt { writing-mode: horizontal-tb; text-orientation: mixed; flex-direction: column; gap: 4px; }
     .vt-title { font-size: 26px; letter-spacing: .14em; margin: 0; }
@@ -442,7 +445,7 @@
     </aside>
     <div class="hero-visual">
       <div class="mark" aria-hidden="true">如是我聞</div>
-      <img class="mural" src="hero.jpg" alt="敦煌壁畫" loading="eager" decoding="async">
+      <picture><source media="(max-width: 800px)" srcset="hero-m.jpg"><img class="mural" src="hero.jpg" alt="敦煌壁畫" loading="eager" decoding="async"></picture>
       <a class="scroll-hint" id="scrollHint" href="#cats" aria-label="往下瀏覽部類"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></a>
     </div>
   </section>
@@ -917,10 +920,7 @@ function detailHtml(x) {
           <label><input type="checkbox" id="notesToggle"> 校勘註</label>
         </div>
       </div>
-      <div id="rpBody">
-        <button class="pill primary sm" id="loadText">展開經文</button>
-        <span class="rp-status" id="rpStatus">從 CBETA 官方 XML 即時載入，第一次約數秒；大部經典（如大般若經）需半分鐘左右。</span>
-      </div>
+      <div id="rpBody"><span class="rp-status" id="rpStatus">載入中…</span></div>
       <div class="scripture" id="scripture" hidden></div>
       <div class="rp-nav" id="rpNav" hidden>
         <button class="pill sm" id="prevJuan">← 上一卷</button>
@@ -1065,10 +1065,11 @@ function renderJuan(x, juanNo) {
 
 function initReader(x) {
   RS = { work: String(x.work), files: [], fileIdx: 0, known: [], juan: null, altOf: null, wantJuan: pendingJuan || 0 };
-  if (pendingJuan) { $('rpStatus').textContent = `將開啟第 ${pendingJuan} 卷。從 CBETA 官方 XML 即時載入，第一次約數秒。`; pendingJuan = 0; }
-  const st = msg => { $('rpStatus').textContent = msg; };
-  $('loadText').addEventListener('click', async () => {
-    $('loadText').disabled = true;
+  pendingJuan = 0;
+  const myRS = RS;
+  const st = msg => { if (RS === myRS) $('rpStatus').textContent = msg; };
+  // 進入經典頁即自動載入經文
+  (async () => {
     try {
       const v = await loadVols();
       let key = RS.work; let files = v.files[key];
@@ -1082,10 +1083,11 @@ function initReader(x) {
         while (!RS.known.some(k => k.juan === RS.wantJuan)) { const idx = RS.files.findIndex(f => !RS.known.some(o => o.path === f)); if (idx < 0) break; await openFile(idx, st); }
         if (RS.known.some(k => k.juan === RS.wantJuan)) target = RS.wantJuan;
       }
-      if (target) await showJuan(target, st);
+      if (RS !== myRS) return;   // 使用者已切到別部經
+      if (target) await showJuan(target, st, false);
       $('rpBody').hidden = true; $('rpTools').hidden = false; $('rpNav').hidden = false; $('scripture').hidden = false;
-    } catch (e) { st('載入失敗：' + e.message); $('loadText').disabled = false; }
-  });
+    } catch (e) { st('經文載入失敗：' + e.message); }
+  })();
   $('juanSel').addEventListener('change', async () => {
     const val = $('juanSel').value;
     if (val.startsWith('file:')) { await openFile(Number(val.slice(5)), st); const f = RS.files[Number(val.slice(5))]; const j = RS.known.find(k => k.path === f); if (j) await showJuan(j.juan, st); }
@@ -1106,16 +1108,16 @@ async function openFile(idx, st) {
     RS.files.map((f, i) => RS.known.some(k => k.path === f) ? '' : `<option value="file:${i}">載入第 ${i + 1} 冊（${esc(f.split('/').pop().replace('.xml', ''))}）…</option>`).join('');
   st('');
 }
-async function showJuan(j, st) {
+async function showJuan(j, st, scroll) {
   const k = RS.known.find(o => o.juan === j); if (!k) return;
   const x = await fetchXml(k.path, st);
   RS.juan = j; $('juanSel').value = String(j);
   $('scripture').innerHTML = renderJuan(x, j);
-  st(`第 ${j} 卷 · 共 ${RS.known.length}${RS.files.length > 1 && RS.known.length < 600 ? '+' : ''} 卷 · 來源 ${k.path.split('/').pop()}`);
+  st(`第 ${j} 卷 · 共 ${RS.known.length}${RS.files.length > 1 && RS.known.length < 600 ? '+' : ''} 卷`);
   const pos = RS.known.findIndex(o => o.juan === j);
   $('prevJuan').disabled = pos <= 0;
   $('nextJuan').disabled = pos >= RS.known.length - 1 && !RS.files.some(f => !RS.known.some(o => o.path === f));
-  $('rp').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (scroll !== false) $('rp').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 async function stepJuan(dir, st) {
   const pos = RS.known.findIndex(o => o.juan === RS.juan); let next = RS.known[pos + dir];
