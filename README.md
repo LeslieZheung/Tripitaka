@@ -3,7 +3,9 @@
 **網站：https://lesliezheung.github.io/Tripitaka/**
 
 以 CBETA 經號為鑰，把每一部經的「導讀」對照到 CBETA 原文。
-首頁依 CBETA「依據部類」23 個部類逐層瀏覽（部類 → 子分類 → 經典），或直接搜尋經號、經名、譯者。
+首頁上方有三層下拉（部類 → 子分類 → 經典）與搜尋欄，往下是 CBETA「依據部類」23 個部類逐層瀏覽。
+
+**資料來源不需任何 Google 授權**：前端直接讀取 Google 試算表「目錄」工作表的公開 CSV（試算表設為「知道連結的人可檢視」即可）；讀不到時退到站內的 `data.json` 快照。Apps Script 只在建表階段使用，網站運作不依賴它。CBETA 只提供連結，CBETA 網站離線時本站仍可正常瀏覽與搜尋。
 純靜態網頁（GitHub Pages）＋ Google Apps Script 提供 JSON，沒有任何 AI API。
 
 ## 這是什麼
@@ -36,7 +38,9 @@ index.html（GitHub Pages）── fetch JSON ── 搜尋 / 卡片 / 單經導
 
 ## 檔案
 
-- `index.html`：整個前端，單一檔案，無建置步驤。頂端 `DEFAULT_API` 為 Apps Script 網頁應用程式的 `/exec` 網址。
+- `index.html`：整個前端，單一檔案，無建置步驤。頂端 `SHEET_ID` 指向試算表；`data.json` 為備援。
+- `data.json`：試算表「目錄」的靜態快照，用 `build_data.ps1` 重新產生（在 Windows PowerShell 執行即可，不需登入）。
+- `hero.jpg`：首屏右側主視覺（敦煌壁畫）。
 - `catalog.json`：CBETA「依據部類」目錄樹（23 部類、900 子分類、5,332 部），由 [CBETA 官方部類目錄](https://github.com/heavenchou/cbwork-bin/blob/master/cbreader2X/bulei/bulei.txt) 轉出。
 - `Code.gs`：Apps Script 原始碼。若試算表不是綁定專案，會用 `SHEET_ID` 開啟。
 
