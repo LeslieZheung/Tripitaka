@@ -170,6 +170,20 @@
   .results-head h3 { font-family: var(--serif); font-size: 20px; font-weight: 600; margin: 0; letter-spacing: .04em; }
   .results-head h3 small { color: var(--muted-2); font-size: 13px; font-family: var(--sans); margin-left: 8px; letter-spacing: 0; }
 
+  /* ---------- 首頁精選經典（分組） */
+  #featTitle { margin-top: 48px; }
+  .feat-group { margin: 0 0 30px; }
+  .feat-group h3 { font-family: var(--serif); font-size: 19px; font-weight: 600; letter-spacing: .06em; margin: 0 0 14px; padding-left: 12px; border-left: 3px solid var(--primary); color: var(--ink); }
+  .feat-group h3 small { font-family: var(--sans); font-size: 12.5px; color: var(--muted-2); margin-left: 8px; letter-spacing: 0; font-weight: normal; }
+  .card .sub { font-size: 12.5px; color: var(--muted-2); margin-top: 2px; line-height: 1.4; }
+  .mgroup { font-family: var(--serif); font-size: 21px; font-weight: 600; letter-spacing: .05em; margin: 26px 0 12px; padding-left: 10px; border-left: 3px solid var(--primary); }
+  .mgroup:first-child { margin-top: 6px; }
+  .mgroup small { font-family: var(--sans); font-size: 12.5px; color: var(--muted-2); margin-left: 8px; font-weight: normal; letter-spacing: 0; }
+  .msub { font-family: var(--serif); font-size: 15.5px; font-weight: 600; color: var(--muted); letter-spacing: .04em; margin: 16px 0 8px 2px; }
+  .row.catrow { width: 100%; font: inherit; text-align: left; cursor: pointer; }
+  .row.catrow .rid { color: var(--primary); width: 28px; }
+  .row .ct { flex: none; font-family: var(--sans); font-size: 12px; color: var(--muted); background: var(--chip); border-radius: 999px; padding: 2px 9px; }
+
   /* ---------- 清單卡片 */
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 18px 16px; box-shadow: var(--shadow);
@@ -293,7 +307,7 @@
     .chips-strip.sub:empty { display: none; }
     .chips-strip.sub .chip-cat { background: var(--card); border-color: var(--line-2); color: var(--muted); font-size: 12.5px; padding: 5px 10px; border-radius: 999px; }
     .chips-strip.sub .chip-cat.active { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
-    #cats, #catgrid, .hint { display: none !important; }
+    #cats, #catgrid, .hint, .desk-only { display: none !important; }
     .mlist { display: block; }
     .mlist .more { padding: 12px; }
   }
@@ -466,6 +480,13 @@
       <small id="count"></small>
     </div>
     <div class="cats" id="catgrid"><div class="loading" style="grid-column:1/-1">載入中…</div></div>
+
+    <div class="section-title desk-only" id="featTitle">
+      <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/></svg></span>
+      <h2>精選集</h2>
+      <small id="featCount"></small>
+    </div>
+    <div class="featured desk-only" id="featgrid"><div class="loading">載入中…</div></div>
   </main>
 </div>
 
@@ -586,9 +607,9 @@ async function fetchRecords(url) {
 // ---------- 載入
 async function load(force) {
   const url = apiUrl();
-  // 1. 部類樹先獨立載入並畫出來，不受資料來源影響
-  try { await loadCatalog(); renderCats(); }
-  catch (e) { $('catgrid').innerHTML = `<div class="loading" style="grid-column:1/-1">部類目錄載入失敗：${esc(e.message)}</div>`; }
+  // 1. 部類樹與精選清單先獨立載入，不受資料來源影響
+  try { await Promise.all([loadCatalog(), loadFeatured()]); renderCats(); }
+  catch (e) { $('catgrid').innerHTML = `<div class="loading" style="grid-column:1/-1">目錄載入失敗：${esc(e.message)}</div>`; }
 
   // 2. 快取
   let cached = null;
@@ -617,6 +638,12 @@ async function load(force) {
   afterLoad();
 }
 
+let FEAT = { groups: [] };
+async function loadFeatured() {
+  try { const r = await fetch('featured.json', { cache: 'no-cache' }); if (r.ok) FEAT = await r.json(); } catch (e) {}
+}
+const featRec = it => Object.assign({}, BY_WORK[it.w] || { work: it.w, title: it.label, canon: (it.w.match(/^[A-Za-z]+/) || [''])[0] }, { _label: it.label, _note: it.note || '', _juan: it.juan || 0 });
+const featCount = () => FEAT.groups.reduce((s, g) => s + g.items.length, 0);
 async function loadCatalog() {
   const r = await fetch(CATALOG_URL, { cache: 'no-cache' });
   if (!r.ok) throw new Error('catalog.json 載入失敗 HTTP ' + r.status);
@@ -651,8 +678,15 @@ function catTileHtml(node) {
 function renderCats() {
   if (!CATALOG) return;
   $('catgrid').innerHTML = (CATALOG.items || []).filter(it => !it.w).map(catTileHtml).join('');
+  renderFeatured();
   renderMenu();
   renderChips();
+}
+// 首頁精選集：分組卡片（桌機，位於「依據部類」之下）
+function renderFeatured() {
+  if (!FEAT.groups.length) { $('featgrid').innerHTML = '<div class="loading">尚未設定精選清單（featured.json）</div>'; return; }
+  $('featCount').textContent = `${featCount()} 部`;
+  $('featgrid').innerHTML = FEAT.groups.map(g => `<section class="feat-group"><h3>${esc(g.title)}<small>${g.items.length} 部</small></h3><div class="grid">${g.items.map(it => cardHtml(featRec(it))).join('')}</div></section>`).join('');
 }
 
 // ---------- 桌機：三條線部類選單
@@ -675,17 +709,20 @@ const isMobile = () => matchMedia('(max-width: 800px)').matches;
 const catShort = label => { const m = String(label).match(/^\d+\s+(\S+)/); return m ? m[1] : String(label); };
 let MLIST = [], mshown = 0, mChip = '';
 function rowHtml(x) {
-  const meta = [x.creator ? String(x.creator) : (x.dynasty || ''), x.juan ? `${x.juan} 卷` : ''].filter(Boolean).join(' · ');
-  return `<a class="row" href="#${esc(x.work)}" data-work="${esc(x.work)}">
+  if (x._header) return `<h3 class="mgroup">${esc(x._header)}${x._small ? `<small>${esc(x._small)}</small>` : ''}</h3>`;
+  if (x._sub) return `<h4 class="msub">${esc(x._sub)}</h4>`;
+  if (x._cat) return `<button class="row catrow" data-n="${esc(x._cat)}"><span class="rid">${esc(x._no)}</span><span class="rbody"><span class="rt">${esc(x._label)}</span></span><span class="ct">${x._count} 部</span></button>`;
+  const title = x._label || x.title;
+  const meta = [x._label && x._label !== x.title ? x.title : '', x._note || '', x.creator ? String(x.creator) : (x.dynasty || ''), x._juan ? `第 ${x._juan} 卷` : (x.juan ? `${x.juan} 卷` : '')].filter(Boolean).join(' · ');
+  return `<a class="row" href="#${esc(x.work)}" data-work="${esc(x.work)}" ${x._juan ? `data-juan="${x._juan}"` : ''}>
     <span class="rid">${esc(x.work)}</span>
-    <span class="rbody"><span class="rt">${esc(x.title)}</span>${meta ? `<div class="rm">${esc(meta)}</div>` : ''}</span>
+    <span class="rbody"><span class="rt">${esc(title)}</span>${meta ? `<div class="rm">${esc(meta)}</div>` : ''}</span>
     <svg class="rbook ${hasIntro(x) ? '' : 'none'}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/></svg>
   </a>`;
 }
 function renderChips() {
   const cats = (CATALOG.items || []).filter(it => !it.w);
-  $('catChips').innerHTML = `<button class="chip-cat ${mChip === '' ? 'active' : ''}" data-n="">全部<small>${ALL.length}</small></button>` +
-    cats.map(n => `<button class="chip-cat ${mChip === n.n ? 'active' : ''}" data-n="${esc(n.n)}">${esc(catShort(n.label))}<small>${n.count || 0}</small></button>`).join('');
+  $('catChips').innerHTML = cats.map(n => `<button class="chip-cat ${mChip === n.n ? 'active' : ''}" data-n="${esc(n.n)}">${esc(catShort(n.label))}<small>${n.count || 0}</small></button>`).join('');
   selectChip(mChip, false);
 }
 // 子分類標籤只留中文名：去掉 "T18-21, X01-02,23 … etc." 這類冊號碼
@@ -714,9 +751,16 @@ function selectChip(n, userTap) {
     MLIST = toRecs(node);
     $('mlistTitle').innerHTML = `${esc(catShort(node.label))} <small id="mlistCount">${MLIST.length} 部</small>`;
   } else {
+    // 手機首頁：依據部類（23 列）在上，精選集（分組）在下
     $('subChips').innerHTML = '';
-    MLIST = ALL; $('mlistTitle').innerHTML = `全部經典 <small id="mlistCount">${ALL.length} 部</small>`;
+    const cats = (CATALOG.items || []).filter(it => !it.w);
+    MLIST = [{ _header: '依據部類', _small: `${cats.length} 部類` }]
+      .concat(cats.map(n => { const m = String(n.label).match(/^(\d+)/); return { _cat: n.n, _no: m ? m[1] : '', _label: catShort(n.label), _count: n.count || 0 }; }))
+      .concat([{ _header: '精選集', _small: `${featCount()} 部` }])
+      .concat(FEAT.groups.flatMap(g => [{ _sub: g.title }].concat(g.items.map(featRec))));
+    $('mlistTitle').innerHTML = '';
   }
+  $('mlistTitle').hidden = !$('mlistTitle').innerHTML;
   setQbHeight();
   mshown = 0; $('mlistBody').innerHTML = ''; renderMList();
   if (userTap) {
@@ -741,9 +785,10 @@ function renderMList() {
   const end = Math.min(MLIST.length, mshown + 80);
   $('mlistBody').insertAdjacentHTML('beforeend', MLIST.slice(mshown, end).map(rowHtml).join(''));
   mshown = end;
-  $('mlistMore').textContent = mshown < MLIST.length ? `顯示 ${mshown} / ${MLIST.length}，往下捲動載入更多` : (MLIST.length ? `共 ${MLIST.length} 部` : '沒有經典');
+  const n = MLIST.filter(x => x.work).length;
+  $('mlistMore').textContent = mshown < MLIST.length ? `顯示 ${Math.min(mshown, n)} / ${n}，往下捲動載入更多` : (n ? `共 ${n} 部` : '沒有經典');
 }
-$('catChips').addEventListener('click', e => { const b = e.target.closest('.chip-cat'); if (b) selectChip(b.dataset.n, true); });
+$('catChips').addEventListener('click', e => { const b = e.target.closest('.chip-cat'); if (!b) return; selectChip(b.classList.contains('active') ? '' : b.dataset.n, true); });
 
 // ---------- 上方下拉查詢：部類 → 子分類 → 經典
 function fillSelect(sel, placeholder, pairs) {
@@ -807,13 +852,15 @@ function applyFilter() {
 
 function cardHtml(x) {
   const chips = [];
-  if (x.juan) chips.push(`${x.juan} 卷`);
+  if (x._juan) chips.push(`第 ${x._juan} 卷`); else if (x.juan) chips.push(`${x.juan} 卷`);
   if (x.dynasty) chips.push(x.dynasty);
   if (x.creator) chips.push(String(x.creator).replace(/^\S+\s+/, ''));
-  return `<article class="card" data-work="${esc(x.work)}">
+  const title = x._label || x.title;
+  const sub = x._label ? [x._label !== x.title ? x.title : '', x._note].filter(Boolean).join(' · ') : '';
+  return `<article class="card" data-work="${esc(x.work)}" ${x._juan ? `data-juan="${x._juan}"` : ''}>
     <div class="head">
       <span class="book ${hasIntro(x) ? 'has' : ''}">${ICON_BOOK}</span>
-      <div><div class="code">${esc(x.work)}${x.canon && CANON_NAMES[x.canon] ? ' · ' + esc(CANON_NAMES[x.canon]) : ''}</div><div class="title">${esc(x.title)}</div></div>
+      <div><div class="code">${esc(x.work)}${x.canon && CANON_NAMES[x.canon] ? ' · ' + esc(CANON_NAMES[x.canon]) : ''}</div><div class="title">${esc(title)}</div>${sub ? `<div class="sub">${esc(sub)}</div>` : ''}</div>
     </div>
     <div class="chips">${chips.map(c => `<span class="chip">${esc(c)}</span>`).join('')}</div>
     <div class="foot"><span class="go">${hasIntro(x) ? '開始對照' : '查看'} <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></div>
@@ -1017,7 +1064,8 @@ function renderJuan(x, juanNo) {
 }
 
 function initReader(x) {
-  RS = { work: String(x.work), files: [], fileIdx: 0, known: [], juan: null, altOf: null };
+  RS = { work: String(x.work), files: [], fileIdx: 0, known: [], juan: null, altOf: null, wantJuan: pendingJuan || 0 };
+  if (pendingJuan) { $('rpStatus').textContent = `將開啟第 ${pendingJuan} 卷。從 CBETA 官方 XML 即時載入，第一次約數秒。`; pendingJuan = 0; }
   const st = msg => { $('rpStatus').textContent = msg; };
   $('loadText').addEventListener('click', async () => {
     $('loadText').disabled = true;
@@ -1029,7 +1077,12 @@ function initReader(x) {
       RS.files = files;
       if (RS.altOf) $('rpBody').insertAdjacentHTML('afterend', `<div class="rp-note">CBETA 未重複收錄此經，以下顯示對應正本 <a href="#${esc(RS.altOf)}">${esc(RS.altOf)}</a> 的經文。</div>`);
       await openFile(0, st);
-      const first = RS.known[0]; if (first) await showJuan(first.juan, st);
+      let target = RS.known[0] && RS.known[0].juan;
+      if (RS.wantJuan) { // 指定卷數：必要時載入後面的冊
+        while (!RS.known.some(k => k.juan === RS.wantJuan)) { const idx = RS.files.findIndex(f => !RS.known.some(o => o.path === f)); if (idx < 0) break; await openFile(idx, st); }
+        if (RS.known.some(k => k.juan === RS.wantJuan)) target = RS.wantJuan;
+      }
+      if (target) await showJuan(target, st);
       $('rpBody').hidden = true; $('rpTools').hidden = false; $('rpNav').hidden = false; $('scripture').hidden = false;
     } catch (e) { st('載入失敗：' + e.message); $('loadText').disabled = false; }
   });
@@ -1077,12 +1130,15 @@ $('clearFilter').addEventListener('click', () => { $('q').value = ''; applyFilte
 document.addEventListener('click', e => {
   const c = e.target.closest('.card, .row'); if (!c) return;
   e.preventDefault();
+  if (c.dataset.n && !c.dataset.work) { selectChip(c.dataset.n, true); return; }   // 手機首頁的部類列
   // 記住從哪裡進來，單經頁的返回鍵才會回到正確的地方
   if (!$('viewFolder').hidden) origin = { type: 'folder', n: lastFolder };
   else if ($('q').value.trim()) origin = { type: 'search' };
   else origin = { type: 'home' };
+  pendingJuan = Number(c.dataset.juan) || 0;   // 精選項目指定卷數（如普賢行願品 = 卷 40）
   location.hash = c.dataset.work;
 });
+let pendingJuan = 0;
 // 首屏直式標題 = 回首頁（取代原本的品牌列）
 document.querySelector('.hero .vt').addEventListener('click', () => resetHome());
 $('railHome').addEventListener('click', e => { e.preventDefault(); resetHome(); });
@@ -1092,7 +1148,7 @@ function setQbHeight() { document.documentElement.style.setProperty('--qb-h', $(
 setQbHeight(); window.addEventListener('resize', setQbHeight); window.addEventListener('load', setQbHeight);
 function scrollToCats(smooth) {
   setQbHeight();
-  const target = isMobile() ? $('mlistTitle') : $('cats');
+  const target = isMobile() ? ($('mlistTitle').hidden ? $('mlist') : $('mlistTitle')) : $('cats');
   const top = target.getBoundingClientRect().top + window.scrollY - $('querybar').offsetHeight - 8;
   window.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' });
 }
