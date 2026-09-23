@@ -1,9 +1,9 @@
-# 大藏經對照
+# 大藏經閱讀
 
 **網站：https://lesliezheung.github.io/Tripitaka/**
 
-以 CBETA 經號為鑰，把每一部經的「導讀」對照到 CBETA 原文。
-首頁上方有三層下拉（部類 → 子分類 → 經典）與搜尋欄，往下是 CBETA「依據部類」23 個部類逐層瀏覽。
+以 CBETA 經號為鑰，每一部經一段導讀，並直接在頁內閱讀 CBETA 原文（從 CBETA 官方 XML 即時載入，分卷、行號、校勘註）。
+桌機頂端為「三條線」部類選單與搜尋欄；首頁下方先「依據部類」（23 部類逐層瀏覽）再「精選集」（`featured.json`）。手機頂端只有搜尋欄，直式壁畫填滿首屏，往下是部類列與精選集。
 
 **資料來源不需任何 Google 授權**：前端直接讀取 Google 試算表「目錄」工作表的公開 CSV（試算表設為「知道連結的人可檢視」即可）；讀不到時退到站內的 `data.json` 快照。Apps Script 只在建表階段使用，網站運作不依賴它。CBETA 只提供連結，CBETA 網站離線時本站仍可正常瀏覽與搜尋。
 純靜態網頁（GitHub Pages）＋ Google Apps Script 提供 JSON，沒有任何 AI API。
